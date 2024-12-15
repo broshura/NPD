@@ -1,76 +1,87 @@
-
 import numpy as np
+import smuthi.postprocessing
+import smuthi.postprocessing.scattered_field
 import smuthi.simulation
 import smuthi.initial_field
 import smuthi.layers
 import smuthi.particles
-import smuthi.postprocessing.far_field as ff
 import smuthi.fields
-from imageio.v2 import sizes
-from pycparser.ply.lex import PlyLogger
-from smuthi.postprocessing.scattered_field import scattered_field_pwe
+from Optical_Force import force
 
-wl = 500
-point = [0,0,100]
-radius = 300
-l_max = 2
-m_max = 2
+c_const = 299792458
+eps0_const = 1/(4*np.pi*c_const**2)*1e7
+mu0_const = 4*np.pi * 1e-7
+
+def single_force(plane_wave, sphere, layer_system, l_max, wl):
+    k = 2*np.pi/wl/1e-9
+    Z = np.sqrt(mu0_const/eps0_const)
+    n = 1
+    Si_const = 1/(2*Z*k**2)*n/c_const
+    initial_field_swe = plane_wave.spherical_wave_expansion(sphere, layer_system)
+
+    scattered_field = sphere.scattered_field
+
+    a1 = []
+    b1 = []
+    p1 = []
+    q1 = []
+    L = []
+    M = []
+
+    for i in range(1, l_max + 1, 1):
+        l = i
+        for j in range(-l_max, l_max + 1, 1):
+            m = j
+            a1.append(initial_field_swe.coefficients_tlm(0, l, m))
+            b1.append(initial_field_swe.coefficients_tlm(1, l, m))
+            p1.append(scattered_field.coefficients_tlm(0, l, m))
+            q1.append(scattered_field.coefficients_tlm(1, l, m))
+            L.append(l)
+            M.append(m)
+
+    ibeam = [[np.array(a1), np.array(b1)], [np.array(L), np.array(M)], max(L)]
+    sbeam = [[np.array(p1), np.array(q1)], [np.array(L), np.array(M)], max(L)]
+
+    fx, fy, fz = force(ibeam, sbeam)
+
+    return np.array([fx, fy, fz])*Si_const
+
+def calculate_forces(particle_system, time):
+    wl = particle_system.wl
+
+    forces = []
+    omega = 2*np.pi*c_const/wl/1e-9
+    phase = np.exp(-1j*omega*time)
+
+    # list of all scattering particles
+    spheres_list = []
+
+    layer_system = smuthi.layers.LayerSystem(thicknesses=[0, 0], refractive_indices=[1, 1])
+    # Scattering particle
+    for i in range(particle_system.n_particles):
+        position = particle_system.positions[i,:]
+        radius = particle_system.radii[i]
+        sphere_i = smuthi.particles.Sphere(position=position*1e9,
+                                         refractive_index=particle_system.n,
+                                         radius=radius*1e9,
+                                         l_max=particle_system.l_max)
+        spheres_list.append(sphere_i)
 
 
-# Initialize the layer system object containing the substrate (glass) half
-# space and the ambient (air) half space. The coordinate system is such that
-# the interface between the first two layers defines the plane z=0.
-# Note that semi infinite layers have thickness 0!
-two_layers = smuthi.layers.LayerSystem(thicknesses=[0, 0],
-                                       refractive_indices=[1.52, 1])
+    # Initial field
+    plane_wave = smuthi.initial_field.PlaneWave(vacuum_wavelength=wl,
+                                                polar_angle=np.pi,  # from top
+                                                azimuthal_angle=0,
+                                                polarization=0,
+                                                amplitude=phase)  # 0=TE 1=TM
 
-# Scattering particle
-sphere = smuthi.particles.Sphere(position=point,
-                                 refractive_index=1.52,
-                                 radius=radius,
-                                 l_max=l_max)
+    # Initialize and run simulation
+    simulation = smuthi.simulation.Simulation(layer_system=layer_system,
+                                              particle_list=spheres_list,
+                                              initial_field=plane_wave)
+    simulation.run()
 
-# list of all scattering particles (only one in this case)
-one_sphere = [sphere]
+    for i in range(particle_system.n_particles):
+        forces.append(single_force(plane_wave, spheres_list[i], layer_system, particle_system.l_max, wl))
 
-# Initial field
-plane_wave = smuthi.initial_field.PlaneWave(vacuum_wavelength=wl,
-                                            polar_angle=np.pi,    # from top
-                                            azimuthal_angle=0,
-                                            polarization=0)       # 0=TE 1=TM
-
-# Initialize and run simulation
-simulation = smuthi.simulation.Simulation(layer_system=two_layers,
-                                          particle_list=one_sphere,
-                                          initial_field=plane_wave)
-simulation.run()
-
-initial_field_pwe = plane_wave.plane_wave_expansion(two_layers,1)[0]
-
-
-
-initial_field_swe = smuthi.fields.transformations.pwe_to_swe_conversion(initial_field_pwe, l_max,m_max, [0,0,100])
-
-scatt_field = smuthi.postprocessing.scattered_field.scattered_field_pwe(wl, one_sphere, two_layers, 1)[0]
-
-scatt_field_pwe = smuthi.fields.transformations.pwe_to_swe_conversion(scatt_field, l_max,m_max, [0,0,100])
-
-scat_new = smuthi.postprocessing.scattered_field.scattered_field_piecewise_expansion(wl, one_sphere, two_layers)
-
-print(scat_new.valid(np.array(0),np.array(0),np.array(401)))
-
-
-a1 = np.empty(shape=(l_max, 2*l_max+1), dtype=complex)
-b1 = np.empty(shape=(l_max, 2*l_max+1), dtype=complex)
-p1 = np.empty(shape=(l_max, 2*l_max+1), dtype=complex)
-q1 = np.empty(shape=(l_max, 2*l_max+1), dtype=complex)
-
-for i in range(l_max):
-    for j in range(l_max):
-        a1[i,j] = initial_field_swe.coefficients_tlm(0,i,j)
-        b1[i,j] = initial_field_swe.coefficients_tlm(1,i,j)
-        p1[i,j] = scatt_field_pwe.coefficients_tlm(0,i,j)
-        q1[i,j] = scatt_field_pwe.coefficients_tlm(1,i,j)
-
-print(p1)
-print(q1)
+    return np.array(forces)
