@@ -7,6 +7,7 @@ import smuthi.layers
 import smuthi.particles
 import smuthi.fields
 from Optical_Force import force
+from optical_force_v2 import forcetorque
 
 c_const = 299792458
 eps0_const = 1/(4*np.pi*c_const**2)*1e7
@@ -30,7 +31,7 @@ def single_force(plane_wave, sphere, layer_system, l_max, wl):
 
     for i in range(1, l_max + 1, 1):
         l = i
-        for j in range(-l_max, l_max + 1, 1):
+        for j in range(-l, l + 1, 1):
             m = j
             a1.append(initial_field_swe.coefficients_tlm(0, l, m))
             b1.append(initial_field_swe.coefficients_tlm(1, l, m))
@@ -42,7 +43,7 @@ def single_force(plane_wave, sphere, layer_system, l_max, wl):
     ibeam = [[np.array(a1), np.array(b1)], [np.array(L), np.array(M)], max(L)]
     sbeam = [[np.array(p1), np.array(q1)], [np.array(L), np.array(M)], max(L)]
 
-    fx, fy, fz = force(ibeam, sbeam)
+    fx, fy, fz = forcetorque(ibeam, sbeam)
 
     return np.array([fx, fy, fz])*Si_const
 
@@ -57,29 +58,36 @@ def calculate_forces(particle_system, time):
     spheres_list = []
 
     layer_system = smuthi.layers.LayerSystem(thicknesses=[0, 0], refractive_indices=[1, 1])
-    # Scattering particle
-    for i in range(particle_system.n_particles):
-        position = particle_system.positions[i,:]
-        radius = particle_system.radii[i]
-        sphere_i = smuthi.particles.Sphere(position=position*1e9,
+    if particle_system.n_particles == 1:
+        sphere = smuthi.particles.Sphere(position=particle_system.positions[:,0]*1e9,
                                          refractive_index=particle_system.n,
-                                         radius=radius*1e9,
+                                         radius=particle_system.radii*1e9,
                                          l_max=particle_system.l_max)
-        spheres_list.append(sphere_i)
+        spheres_list = [sphere]
+    else:
+        # Scattering particle
+        for i in range(particle_system.n_particles):
+            position = particle_system.positions[i,:]
+            radius = particle_system.radii[i]
+            sphere_i = smuthi.particles.Sphere(position=position*1e9,
+                                                refractive_index=particle_system.n,
+                                                radius=radius*1e9,
+                                                l_max=particle_system.l_max)
+            spheres_list.append(sphere_i)
 
     #TODO Gaussian beam needed to be implemented - now it dont give a move
     # Initial field
-    # IF = smuthi.initial_field.GaussianBeam(vacuum_wavelength=wl,
-    #                                        beam_waist=1e-4,
-    #                                             polar_angle=np.pi,  # from top
-    #                                             azimuthal_angle=0,
-    #                                             polarization=0,
-    #                                             amplitude=phase*1e9)  # 0=TE 1=TM
-    IF = smuthi.initial_field.PlaneWave(vacuum_wavelength=wl,
+    IF = smuthi.initial_field.GaussianBeam(vacuum_wavelength=wl,
+                                           beam_waist=400,
                                                 polar_angle=np.pi,  # from top
                                                 azimuthal_angle=0,
                                                 polarization=0,
                                                 amplitude=phase)  # 0=TE 1=TM
+    # IF = smuthi.initial_field.PlaneWave(vacuum_wavelength=wl,
+    #                                             polar_angle=np.pi,  # from top
+    #                                             azimuthal_angle=0,
+    #                                             polarization=0,
+    #                                             amplitude=phase)  # 0=TE 1=TM
 
     # Initialize and run simulation
     simulation = smuthi.simulation.Simulation(layer_system=layer_system,

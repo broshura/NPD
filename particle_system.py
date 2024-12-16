@@ -9,7 +9,7 @@ class ParticleSystem:
         self.radii = np.array(radii)
         self.l_max = l_max
         self.wl = wl
-        self.n_particles = len(self.positions)
+        self.n_particles = len(self.radii)
         self.n = n
     
     def random_forces(self, positions, magnitude_mean=0.0, magnitude_std=0.5):
@@ -22,7 +22,7 @@ class ParticleSystem:
         :return: Random forces applied to the particles
         """
         # Generate random magnitudes from a normal distribution
-        magnitudes = 10*np.random.normal(magnitude_mean, magnitude_std, positions.shape[0])
+        magnitudes = 1e-26*np.random.normal(magnitude_mean, magnitude_std, positions.shape[0])
         
         # Generate random directions uniformly distributed on the unit sphere
         directions = np.random.uniform(-1, 1, positions.shape)

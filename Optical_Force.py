@@ -57,9 +57,11 @@ def force(ibeam, sbeam):
     q = q[ci]
 
     Az = m / n / (n + 1) * np.imag(-(a) * np.conj(b) + np.conj(q) * (p))
+    
     Bz = 1 / (n + 1) * np.emath.sqrt(n * (n - m + 1) * (n + m + 1) * (n + 2) / (2 * n + 3) / (2 * n + 1)) \
          * np.imag(at[cinp1] * np.conj(a) + bt[cinp1] * np.conj(b) - pt[cinp1] * np.conj(p) - qt[cinp1] * np.conj(q))
-
+    print(n)
+    print(m)
     fz = 2 * np.sum(Az + Bz)
 
     Axy = 1j / n / (n + 1) * np.emath.sqrt((n - m) * (n + m + 1)) \
