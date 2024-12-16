@@ -11,6 +11,27 @@ class ParticleSystem:
         self.wl = wl
         self.n_particles = len(self.positions)
         self.n = n
+    
+    def random_forces(self, positions, magnitude_mean=0.0, magnitude_std=0.5):
+        """
+        Generate random forces to simulate Brownian motion.
+
+        :param positions: Current positions of the particles
+        :param magnitude_mean: Mean of the normal distribution for the magnitude of the forces
+        :param magnitude_std: Standard deviation of the normal distribution for the magnitude of the forces
+        :return: Random forces applied to the particles
+        """
+        # Generate random magnitudes from a normal distribution
+        magnitudes = 10*np.random.normal(magnitude_mean, magnitude_std, positions.shape[0])
+        
+        # Generate random directions uniformly distributed on the unit sphere
+        directions = np.random.uniform(-1, 1, positions.shape)
+        directions /= np.linalg.norm(directions, axis=1)[:, np.newaxis]  # Normalize to get unit vectors
+
+        # Combine magnitudes and directions
+        random_forces = magnitudes[:, np.newaxis] * directions
+        
+        return random_forces
 
     def equations_of_motion(self, t, y):
         """

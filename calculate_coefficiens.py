@@ -67,9 +67,15 @@ def calculate_forces(particle_system, time):
                                          l_max=particle_system.l_max)
         spheres_list.append(sphere_i)
 
-
+    #TODO Gaussian beam needed to be implemented - now it dont give a move
     # Initial field
-    plane_wave = smuthi.initial_field.PlaneWave(vacuum_wavelength=wl,
+    # IF = smuthi.initial_field.GaussianBeam(vacuum_wavelength=wl,
+    #                                        beam_waist=1e-4,
+    #                                             polar_angle=np.pi,  # from top
+    #                                             azimuthal_angle=0,
+    #                                             polarization=0,
+    #                                             amplitude=phase*1e9)  # 0=TE 1=TM
+    IF = smuthi.initial_field.PlaneWave(vacuum_wavelength=wl,
                                                 polar_angle=np.pi,  # from top
                                                 azimuthal_angle=0,
                                                 polarization=0,
@@ -78,10 +84,12 @@ def calculate_forces(particle_system, time):
     # Initialize and run simulation
     simulation = smuthi.simulation.Simulation(layer_system=layer_system,
                                               particle_list=spheres_list,
-                                              initial_field=plane_wave)
+                                              initial_field=IF)
+    # Turn of logging to console
+    simulation.set_logging(log_to_terminal=False)
     simulation.run()
 
     for i in range(particle_system.n_particles):
-        forces.append(single_force(plane_wave, spheres_list[i], layer_system, particle_system.l_max, wl))
+        forces.append(single_force(IF, spheres_list[i], layer_system, particle_system.l_max, wl))
 
     return np.array(forces)
