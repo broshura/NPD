@@ -1,6 +1,0 @@
-output
-.ipynb_checkpoints
-venv
-.idea
-__pycache__/
-particle_motion.gif
