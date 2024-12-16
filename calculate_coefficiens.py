@@ -69,17 +69,17 @@ def calculate_forces(particle_system, time):
 
     #TODO Gaussian beam needed to be implemented - now it dont give a move
     # Initial field
-    # IF = smuthi.initial_field.GaussianBeam(vacuum_wavelength=wl,
-    #                                        beam_waist=1e-4,
-    #                                             polar_angle=np.pi,  # from top
-    #                                             azimuthal_angle=0,
-    #                                             polarization=0,
-    #                                             amplitude=phase*1e9)  # 0=TE 1=TM
-    IF = smuthi.initial_field.PlaneWave(vacuum_wavelength=wl,
+    IF = smuthi.initial_field.GaussianBeam(vacuum_wavelength=wl,
+                                           beam_waist=400,
                                                 polar_angle=np.pi,  # from top
                                                 azimuthal_angle=0,
                                                 polarization=0,
                                                 amplitude=phase)  # 0=TE 1=TM
+    # IF = smuthi.initial_field.PlaneWave(vacuum_wavelength=wl,
+    #                                             polar_angle=np.pi,  # from top
+    #                                             azimuthal_angle=0,
+    #                                             polarization=0,
+    #                                             amplitude=phase)  # 0=TE 1=TM
 
     # Initialize and run simulation
     simulation = smuthi.simulation.Simulation(layer_system=layer_system,
