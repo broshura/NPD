@@ -12,7 +12,7 @@ class ParticleSystem:
         self.n_particles = len(self.positions)
         self.n = n
     
-    def generate_random_forces(self, n_time_steps, magnitude_mean=0.0, magnitude_std=0.0):
+    def generate_random_forces(self, n_time_steps, magnitude_mean=0.0, magnitude_std=1e-30):
         """
         Generate random forces to simulate Brownian motion for all particles and time steps.
 
@@ -44,7 +44,7 @@ class ParticleSystem:
         positions = y[:3*n_particles].reshape((n_particles, 3))
         velocities = y[3*n_particles:].reshape((n_particles, 3))
 
-        forces = self.forces(self, t) + random_forces[int(t)%len(random_forces)]  # Add random forces for the current time step
+        forces = self.forces(self, t) + random_forces[int(t)%len(random_forces)] - velocities * 2e-18  # Add random forces for the current time step
         accelerations = forces / self.masses[:, np.newaxis]
 
         return np.concatenate((velocities.flatten(), accelerations.flatten()))
